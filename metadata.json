@@ -1,0 +1,6 @@
+{
+  "name": "Chrono Clock",
+  "description": "Adaptive Android home screen digital clock widget with per-widget customization, battery-aware seconds, alarm integration, and responsive grid layouts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

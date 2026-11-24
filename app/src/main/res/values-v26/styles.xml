@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="ClockText.Display.Light" parent="ClockTextBase">
+        <item name="android:fontFamily">@font/outfit</item>
+        <item name="android:textStyle">normal</item>
+    </style>
+    <style name="ClockText.Display.Regular" parent="ClockTextBase">
+        <item name="android:fontFamily">@font/outfit</item>
+        <item name="android:textStyle">normal</item>
+    </style>
+    <style name="ClockText.Display.Bold" parent="ClockTextBase">
+        <item name="android:fontFamily">@font/outfit</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+</resources>
