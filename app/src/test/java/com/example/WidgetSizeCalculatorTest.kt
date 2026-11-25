@@ -81,13 +81,17 @@ class WidgetSizeCalculatorTest {
     }
 
     @Test
-    fun `vertical padding stays at or below 5 percent across all grid presets`() {
+    fun `vertical and horizontal padding stay at or below 5 percent across all grid presets`() {
         val config = ClockWidgetConfig(appWidgetId = 4)
         GridPreset.entries.forEach { preset ->
             val spec = WidgetSizeCalculator.calculate(preset.widthDp, preset.heightDp, config)
             assertTrue(
                 "Expected <= 5% vertical padding on ${preset.label}, was ${spec.verticalPaddingDp}dp / ${preset.heightDp}dp",
                 spec.verticalPaddingDp <= preset.heightDp * 0.05f
+            )
+            assertTrue(
+                "Expected <= 5% horizontal padding on ${preset.label}, was ${spec.horizontalPaddingDp}dp / ${preset.widthDp}dp",
+                spec.horizontalPaddingDp <= preset.widthDp * 0.05f
             )
         }
     }
@@ -98,5 +102,21 @@ class WidgetSizeCalculatorTest {
         val spec = WidgetSizeCalculator.calculate(580, 185, config, isSystem24Hour = true)
         assertEquals(WidgetSizeBucket.TABLET, spec.bucket)
         assertTrue("Expected large tablet digits, got ${spec.timeTextSizeSp}", spec.timeTextSizeSp >= 120f)
+    }
+
+    @Test
+    fun `bold weight with 12h seconds scales down on compact width to avoid clipping`() {
+        val regular = ClockWidgetConfig(
+            appWidgetId = 6,
+            showSeconds = true,
+            timeFormatMode = com.example.model.TimeFormatMode.HOUR_12,
+            fontWeight = com.example.model.ClockFontWeight.REGULAR
+        )
+        val bold = regular.copy(fontWeight = com.example.model.ClockFontWeight.BOLD)
+
+        val regSpec = WidgetSizeCalculator.calculate(GridPreset.GRID_2X1.widthDp, GridPreset.GRID_2X1.heightDp, regular)
+        val boldSpec = WidgetSizeCalculator.calculate(GridPreset.GRID_2X1.widthDp, GridPreset.GRID_2X1.heightDp, bold)
+
+        assertTrue(boldSpec.timeTextSizeSp < regSpec.timeTextSizeSp)
     }
 }

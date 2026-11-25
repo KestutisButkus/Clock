@@ -146,23 +146,29 @@ object ClockRemoteViewsBuilder {
 
         populateTimeLayers(context, views, spec, config)
 
-        when (config.timeFormatMode) {
-            TimeFormatMode.SYSTEM -> {
-                views.setViewVisibility(R.id.tc_ampm, View.VISIBLE)
-                views.setCharSequence(R.id.tc_ampm, "setFormat12Hour", "a")
-                views.setCharSequence(R.id.tc_ampm, "setFormat24Hour", "")
-            }
-            TimeFormatMode.HOUR_12 -> {
-                views.setViewVisibility(R.id.tc_ampm, View.VISIBLE)
-                views.setCharSequence(R.id.tc_ampm, "setFormat12Hour", "a")
-                views.setCharSequence(R.id.tc_ampm, "setFormat24Hour", "a")
-            }
-            TimeFormatMode.HOUR_24 -> {
-                views.setViewVisibility(R.id.tc_ampm, View.GONE)
-            }
+        val isAmPmVisible = when (config.timeFormatMode) {
+            TimeFormatMode.SYSTEM -> !isSystem24Hour
+            TimeFormatMode.HOUR_12 -> true
+            TimeFormatMode.HOUR_24 -> false
         }
-        views.setTextViewTextSize(R.id.tc_ampm, TypedValue.COMPLEX_UNIT_SP, spec.ampmTextSizeSp)
-        views.setTextColor(R.id.tc_ampm, config.accentColorArgb)
+        if (isAmPmVisible) {
+            views.setViewVisibility(R.id.tc_ampm, View.VISIBLE)
+            when (config.timeFormatMode) {
+                TimeFormatMode.SYSTEM -> {
+                    views.setCharSequence(R.id.tc_ampm, "setFormat12Hour", "a")
+                    views.setCharSequence(R.id.tc_ampm, "setFormat24Hour", "")
+                }
+                TimeFormatMode.HOUR_12 -> {
+                    views.setCharSequence(R.id.tc_ampm, "setFormat12Hour", "a")
+                    views.setCharSequence(R.id.tc_ampm, "setFormat24Hour", "a")
+                }
+                TimeFormatMode.HOUR_24 -> Unit
+            }
+            views.setTextViewTextSize(R.id.tc_ampm, TypedValue.COMPLEX_UNIT_SP, spec.ampmTextSizeSp)
+            views.setTextColor(R.id.tc_ampm, config.accentColorArgb)
+        } else {
+            views.setViewVisibility(R.id.tc_ampm, View.GONE)
+        }
 
         val dateSkeleton = if (spec.useExtendedDateFormat) "EEEEMMMd" else "EEEMMMd"
         val localizedDatePattern = DateFormat.getBestDateTimePattern(Locale.getDefault(), dateSkeleton)
@@ -257,9 +263,9 @@ object ClockRemoteViewsBuilder {
     ) {
         parent.removeAllViews(R.id.time_layer_frame)
         val leafLayout = resolveLeafLayout(config.fontStyle, config.fontWeight)
-        val dp1 = dpToPx(context, 1)
-        val dp2 = dpToPx(context, 2)
-        val dp3 = dpToPx(context, 3)
+        val dp1 = dpToPx(context, 1).coerceAtLeast(1)
+        val dp2 = dp1 * 2
+        val dp3 = dp1 * 3
 
         val pattern12 = if (config.showSeconds) "h:mm:ss" else "h:mm"
         val pattern24 = if (config.showSeconds) "HH:mm:ss" else "HH:mm"
@@ -277,7 +283,11 @@ object ClockRemoteViewsBuilder {
             padBottom: Int
         ): RemoteViews {
             return RemoteViews(context.packageName, leafLayout).apply {
-                setTextViewTextSize(R.id.tc_clock_item, TypedValue.COMPLEX_UNIT_SP, spec.timeTextSizeSp)
+                // On API 26+, ClockTextBase enables autoSizeTextType="uniform" inside match_parent bounds;
+                // calling setTextViewTextSize would override and disable native launcher auto-sizing.
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+                    setTextViewTextSize(R.id.tc_clock_item, TypedValue.COMPLEX_UNIT_SP, spec.timeTextSizeSp)
+                }
                 setTextColor(R.id.tc_clock_item, color)
                 setCharSequence(R.id.tc_clock_item, "setFormat12Hour", effective12)
                 setCharSequence(R.id.tc_clock_item, "setFormat24Hour", effective24)

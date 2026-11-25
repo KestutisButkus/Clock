@@ -211,7 +211,8 @@ fun ClockWidgetPreview(
                         accentColor = accentColor,
                         shadow = textShadow,
                         outline = config.shadowStyle == ClockShadowStyle.OUTLINE,
-                        outlineColor = effectColor
+                        outlineColor = effectColor,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Column(
@@ -304,15 +305,24 @@ private fun PreviewTimeBlock(
     accentColor: Color,
     shadow: Shadow?,
     outline: Boolean,
-    outlineColor: Color
+    outlineColor: Color,
+    modifier: Modifier = Modifier
 ) {
-    Row(verticalAlignment = Alignment.Bottom) {
-        Box {
+    var fittedSizeSp by remember(textSizeSp, timeText, fontFamily, fontWeight) {
+        androidx.compose.runtime.mutableFloatStateOf(textSizeSp)
+    }
+
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Box(modifier = Modifier.weight(1f, fill = false)) {
             val baseStyle = TextStyle(
                 fontFamily = fontFamily,
                 fontWeight = fontWeight,
-                fontSize = textSizeSp.sp,
-                lineHeight = (textSizeSp * 0.9f).sp,
+                fontSize = fittedSizeSp.sp,
+                lineHeight = (fittedSizeSp * 0.92f).sp,
                 fontFeatureSettings = "tnum",
                 platformStyle = PlatformTextStyle(includeFontPadding = false),
                 lineHeightStyle = LineHeightStyle(
@@ -328,6 +338,7 @@ private fun PreviewTimeBlock(
                         style = baseStyle,
                         color = outlineColor.copy(alpha = 0.9f),
                         maxLines = 1,
+                        softWrap = false,
                         modifier = Modifier.offset(x = dx.dp, y = dy.dp)
                     )
                 }
@@ -336,7 +347,13 @@ private fun PreviewTimeBlock(
                 text = timeText,
                 style = baseStyle.copy(shadow = shadow),
                 color = textColor,
-                maxLines = 1
+                maxLines = 1,
+                softWrap = false,
+                onTextLayout = { layoutResult ->
+                    if (layoutResult.hasVisualOverflow && fittedSizeSp > 12f) {
+                        fittedSizeSp = (fittedSizeSp * 0.92f).coerceAtLeast(12f)
+                    }
+                }
             )
         }
         if (ampmText.isNotEmpty()) {
@@ -348,6 +365,7 @@ private fun PreviewTimeBlock(
                 fontWeight = FontWeight.Bold,
                 fontFamily = InterFontFamily,
                 maxLines = 1,
+                softWrap = false,
                 modifier = Modifier.padding(bottom = 2.dp)
             )
         }

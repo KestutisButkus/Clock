@@ -1,6 +1,7 @@
 package com.example.widget
 
 import com.example.model.ClockFontStyle
+import com.example.model.ClockFontWeight
 import com.example.model.ClockWidgetConfig
 import com.example.model.DatePlacement
 import com.example.model.TimeFormatMode
@@ -51,7 +52,7 @@ object WidgetSizeCalculator {
             }
             config.datePlacement == DatePlacement.BELOW -> DatePlacement.BELOW
             else -> {
-                val besideMinWidth = if (config.showSeconds) 285 else 240
+                val besideMinWidth = if (config.showSeconds) 295 else 240
                 if (safeWidth >= besideMinWidth) DatePlacement.BESIDE else DatePlacement.BELOW
             }
         }
@@ -80,12 +81,12 @@ object WidgetSizeCalculator {
         }
 
         val availableDigitHeightDp = (innerHeight - metaStackedHeightDp).coerceAtLeast(22f)
-        val maxTimeSpByHeight = availableDigitHeightDp / 0.76f
+        val maxTimeSpByHeight = availableDigitHeightDp / 0.90f
 
         val availableDigitWidthDp = when {
             bucket == WidgetSizeBucket.WIDE && effectiveDatePlacement == DatePlacement.BESIDE && hasMetadata -> {
                 val reservedMetaWidth = if (config.showDate) (safeWidth * 0.29f).coerceIn(82f, 150f) else 64f
-                (innerWidth - reservedMetaWidth - 8f).coerceAtLeast(innerWidth * 0.58f)
+                (innerWidth - reservedMetaWidth - 8f).coerceAtLeast(innerWidth * 0.56f)
             }
             else -> innerWidth
         }
@@ -95,18 +96,24 @@ object WidgetSizeCalculator {
             TimeFormatMode.HOUR_12 -> false
             TimeFormatMode.SYSTEM -> isSystem24Hour
         }
-        val ampmReserveFactor = if (!is24Hour) 0.88f else 1.0f
-        val effectiveCharUnits = if (config.showSeconds) 4.45f else 2.85f
+        val ampmReserveFactor = if (!is24Hour) 0.83f else 1.0f
+        val effectiveCharUnits = if (config.showSeconds) 4.85f else 3.15f
         val fontWidthFactor = when (config.fontStyle) {
             ClockFontStyle.MONOSPACE -> 1.14f
             ClockFontStyle.CONDENSED -> 0.86f
             ClockFontStyle.SANS_SERIF -> 1.0f
             ClockFontStyle.DISPLAY -> 1.02f
         }
+        val fontWeightFactor = when (config.fontWeight) {
+            ClockFontWeight.LIGHT -> 0.96f
+            ClockFontWeight.REGULAR -> 1.0f
+            ClockFontWeight.BOLD -> 1.06f
+        }
 
-        val maxTimeSpByWidth = (availableDigitWidthDp * ampmReserveFactor) / (effectiveCharUnits * fontWidthFactor)
+        val maxTimeSpByWidth = (availableDigitWidthDp * ampmReserveFactor) /
+            (effectiveCharUnits * fontWidthFactor * fontWeightFactor)
 
-        val finalTimeSp = minOf(maxTimeSpByHeight, maxTimeSpByWidth).coerceIn(20f, 220f)
+        val finalTimeSp = minOf(maxTimeSpByHeight, maxTimeSpByWidth).coerceIn(16f, 220f)
         val ampmSp = (finalTimeSp * 0.27f).coerceIn(9.5f, 38f)
 
         val useExtendedDate = ((bucket == WidgetSizeBucket.LARGE || bucket == WidgetSizeBucket.TABLET) && safeWidth >= 250) ||

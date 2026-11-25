@@ -16,42 +16,49 @@
 
         <LinearLayout
             android:id="@+id/time_row"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:gravity="bottom|center_horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:gravity="center"
             android:orientation="horizontal">
 
             <FrameLayout
                 android:id="@+id/time_layer_frame"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1" />
 
             <TextClock
                 android:id="@+id/tc_ampm"
-                style="@style/ClockText.Sans.Bold"
+                style="@style/ClockMetaBase"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_gravity="bottom"
                 android:layout_marginStart="4dp"
                 android:layout_marginBottom="6dp"
+                android:fontFamily="sans-serif"
                 android:format12Hour="a"
                 android:format24Hour=""
                 android:textColor="@color/sky_400"
-                android:textSize="16sp" />
+                android:textSize="16sp"
+                android:textStyle="bold" />
         </LinearLayout>
 
         <LinearLayout
             android:id="@+id/meta_below_row"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
             android:layout_marginTop="2dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
             <TextClock
                 android:id="@+id/tc_date_below"
-                style="@style/ClockText.Sans.Regular"
+                style="@style/ClockMetaBase"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:fontFamily="sans-serif"
                 android:format12Hour="EEEE, MMMM d"
                 android:format24Hour="EEEE, d MMMM"
                 android:textColor="@color/white"
@@ -77,12 +84,14 @@
 
                 <TextView
                     android:id="@+id/tv_alarm_below"
-                    style="@style/ClockText.Sans.Bold"
+                    style="@style/ClockMetaBase"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="4dp"
+                    android:fontFamily="sans-serif"
                     android:textColor="@color/amber_500"
-                    android:textSize="13sp" />
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>
