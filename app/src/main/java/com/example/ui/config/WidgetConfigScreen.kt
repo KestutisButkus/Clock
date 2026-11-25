@@ -29,11 +29,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -52,9 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -81,31 +77,17 @@ fun WidgetConfigScreen(
     onSave: () -> Unit
 ) {
     var previewGrid by remember { mutableStateOf(GridPreset.GRID_4X1) }
-    var simulateAlarmInPreview by remember { mutableStateOf(realNextAlarm == null) }
-
-    val previewAlarmText = when {
-        !config.showNextAlarm -> null
-        realNextAlarm != null -> realNextAlarm
-        simulateAlarmInPreview -> "07:30"
-        else -> null
-    }
+    val previewAlarmText = if (config.showNextAlarm) realNextAlarm ?: "07:30" else null
 
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            text = "Widget Settings",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            text = "Instance #$appWidgetId",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    Text(
+                        text = "Widget #$appWidgetId",
+                        style = MaterialTheme.typography.titleMedium
+                    )
                 },
                 navigationIcon = {
                     IconButton(
@@ -114,7 +96,7 @@ fun WidgetConfigScreen(
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Cancel configuration"
+                            contentDescription = "Cancel"
                         )
                     }
                 },
@@ -124,15 +106,12 @@ fun WidgetConfigScreen(
             )
         },
         bottomBar = {
-            Surface(
-                tonalElevation = 6.dp,
-                color = MaterialTheme.colorScheme.surface
-            ) {
+            Surface(color = MaterialTheme.colorScheme.background) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .navigationBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Button(
@@ -140,9 +119,9 @@ fun WidgetConfigScreen(
                         modifier = Modifier
                             .widthIn(max = 560.dp)
                             .fillMaxWidth()
-                            .height(50.dp)
+                            .height(48.dp)
                             .testTag("save_widget_button"),
-                        shape = RoundedCornerShape(14.dp)
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Check,
@@ -150,10 +129,7 @@ fun WidgetConfigScreen(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Save & Apply Widget",
-                            style = MaterialTheme.typography.titleMedium
-                        )
+                        Text("Save", style = MaterialTheme.typography.titleMedium)
                     }
                 }
             }
@@ -171,9 +147,8 @@ fun WidgetConfigScreen(
                 modifier = Modifier
                     .widthIn(max = 600.dp)
                     .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Live Preview
                 ClockWidgetPreview(
                     config = config,
                     gridPreset = previewGrid,
@@ -181,305 +156,162 @@ fun WidgetConfigScreen(
                     modifier = Modifier.testTag("config_live_preview")
                 )
 
-                // Grid Size Tester
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    GridPreset.entries.forEach { preset ->
+                    listOf(
+                        GridPreset.GRID_2X1,
+                        GridPreset.GRID_4X1,
+                        GridPreset.GRID_4X2,
+                        GridPreset.GRID_TABLET
+                    ).forEach { preset ->
                         FilterChip(
                             selected = previewGrid == preset,
                             onClick = { previewGrid = preset },
                             label = { Text(preset.label) },
-                            modifier = Modifier.testTag("grid_chip_${preset.name}"),
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
+                            modifier = Modifier.testTag("grid_chip_${preset.name}")
                         )
                     }
                 }
 
-                // Time & Battery Section
-                ConfigSectionCard(
-                    title = "Time & Information",
-                    icon = painterResource(id = com.example.R.drawable.ic_schedule)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
+
+                // Time & Info
+                SectionLabel("Time & Info")
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TimeFormatMode.entries.forEach { mode ->
+                        FilterChip(
+                            selected = config.timeFormatMode == mode,
+                            onClick = { onConfigChange(config.copy(timeFormatMode = mode)) },
+                            label = { Text(mode.label) },
+                            modifier = Modifier.testTag("time_format_${mode.name}")
+                        )
+                    }
+                }
+
+                SimpleSwitchRow(
+                    title = "Seconds",
+                    checked = config.showSeconds,
+                    testTag = "switch_show_seconds",
+                    onCheckedChange = { onConfigChange(config.copy(showSeconds = it)) }
+                )
+
+                SimpleSwitchRow(
+                    title = "Date & Weekday",
+                    checked = config.showDate,
+                    testTag = "switch_show_date",
+                    onCheckedChange = { onConfigChange(config.copy(showDate = it)) }
+                )
+
+                if (config.showDate) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        DatePlacement.entries.forEach { placement ->
+                            FilterChip(
+                                selected = config.datePlacement == placement,
+                                onClick = { onConfigChange(config.copy(datePlacement = placement)) },
+                                label = { Text(placement.label) },
+                                modifier = Modifier.testTag("date_placement_${placement.name}")
+                            )
+                        }
+                    }
+                }
+
+                SimpleSwitchRow(
+                    title = if (realNextAlarm != null) "Next Alarm ($realNextAlarm)" else "Next Alarm",
+                    checked = config.showNextAlarm,
+                    testTag = "switch_show_alarm",
+                    onCheckedChange = { onConfigChange(config.copy(showNextAlarm = it)) }
+                )
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
+
+                // Typography & Effects
+                SectionLabel("Typography & Contrast")
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text(
-                        text = "Time Format",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        TimeFormatMode.entries.forEach { mode ->
-                            FilterChip(
-                                selected = config.timeFormatMode == mode,
-                                onClick = {
-                                    onConfigChange(config.copy(timeFormatMode = mode))
-                                },
-                                label = { Text(mode.label) },
-                                modifier = Modifier.testTag("time_format_${mode.name}")
-                            )
-                        }
-                    }
-
-                    ConfigSwitchRow(
-                        title = "Show Seconds",
-                        subtitle = if (config.showSeconds) {
-                            "Live 1s TextClock ticker (visible screen only)"
-                        } else {
-                            "Battery-saving mode: minute-only updates"
-                        },
-                        checked = config.showSeconds,
-                        testTag = "switch_show_seconds",
-                        onCheckedChange = { onConfigChange(config.copy(showSeconds = it)) }
-                    )
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f))
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            painter = painterResource(id = com.example.R.drawable.ic_battery_bolt),
-                            contentDescription = null,
-                            tint = if (config.showSeconds) {
-                                MaterialTheme.colorScheme.secondary
-                            } else {
-                                MaterialTheme.colorScheme.tertiary
-                            },
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (config.showSeconds) {
-                                "Seconds tick inside Launcher TextClock without background wakeups."
-                            } else {
-                                "Optimal battery mode active: zero per-second updates."
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    ConfigSwitchRow(
-                        title = "Show Date & Weekday",
-                        subtitle = "Adapts placement automatically across grid sizes",
-                        checked = config.showDate,
-                        testTag = "switch_show_date",
-                        onCheckedChange = { onConfigChange(config.copy(showDate = it)) }
-                    )
-
-                    if (config.showDate) {
-                        Text(
-                            text = "Date Placement",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            DatePlacement.entries.forEach { placement ->
-                                FilterChip(
-                                    selected = config.datePlacement == placement,
-                                    onClick = {
-                                        onConfigChange(config.copy(datePlacement = placement))
-                                    },
-                                    label = { Text(placement.label) },
-                                    modifier = Modifier.testTag("date_placement_${placement.name}")
-                                )
-                            }
-                        }
-                    }
-
-                    ConfigSwitchRow(
-                        title = "Show Next Alarm",
-                        subtitle = if (realNextAlarm != null) {
-                            "Active system alarm: $realNextAlarm"
-                        } else {
-                            "Auto-hides on home screen when no alarm is set"
-                        },
-                        checked = config.showNextAlarm,
-                        testTag = "switch_show_alarm",
-                        onCheckedChange = { onConfigChange(config.copy(showNextAlarm = it)) }
-                    )
-
-                    if (config.showNextAlarm && realNextAlarm == null) {
-                        ConfigSwitchRow(
-                            title = "Preview Simulated Alarm",
-                            subtitle = "Test alarm badge spacing when no system alarm is active",
-                            checked = simulateAlarmInPreview,
-                            testTag = "switch_simulate_alarm",
-                            onCheckedChange = { simulateAlarmInPreview = it }
+                    ClockFontStyle.entries.forEach { style ->
+                        FilterChip(
+                            selected = config.fontStyle == style,
+                            onClick = { onConfigChange(config.copy(fontStyle = style)) },
+                            label = { Text(style.label) },
+                            modifier = Modifier.testTag("font_style_${style.name}")
                         )
                     }
                 }
 
-                // Typography & Readability Section
-                ConfigSectionCard(
-                    title = "Typography & Readability",
-                    icon = painterResource(id = com.example.R.drawable.ic_font_style)
-                ) {
-                    Text(
-                        text = "Digit Font Style",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        ClockFontStyle.entries.forEach { style ->
-                            FilterChip(
-                                selected = config.fontStyle == style,
-                                onClick = { onConfigChange(config.copy(fontStyle = style)) },
-                                label = { Text(style.label) },
-                                modifier = Modifier.testTag("font_style_${style.name}")
-                            )
-                        }
-                    }
-
-                    Text(
-                        text = "Font Weight",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        ClockFontWeight.entries.forEach { weight ->
-                            FilterChip(
-                                selected = config.fontWeight == weight,
-                                onClick = { onConfigChange(config.copy(fontWeight = weight)) },
-                                label = { Text(weight.label) },
-                                modifier = Modifier.testTag("font_weight_${weight.name}")
-                            )
-                        }
-                    }
-
-                    Text(
-                        text = "Contrast Shadow / Outline",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        ClockShadowStyle.entries.forEach { shadow ->
-                            FilterChip(
-                                selected = config.shadowStyle == shadow,
-                                onClick = { onConfigChange(config.copy(shadowStyle = shadow)) },
-                                label = { Text(shadow.label) },
-                                modifier = Modifier.testTag("shadow_style_${shadow.name}")
-                            )
-                        }
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ClockFontWeight.entries.forEach { weight ->
+                        FilterChip(
+                            selected = config.fontWeight == weight,
+                            onClick = { onConfigChange(config.copy(fontWeight = weight)) },
+                            label = { Text(weight.label) },
+                            modifier = Modifier.testTag("font_weight_${weight.name}")
+                        )
                     }
                 }
 
-                // Colors & Background Section
-                ConfigSectionCard(
-                    title = "Colors & Surface",
-                    icon = painterResource(id = com.example.R.drawable.ic_tune)
-                ) {
-                    Text(
-                        text = "Digit & Date Color",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    ColorSwatchRow(
-                        presets = WidgetColorPalette.textPresets,
-                        selectedArgb = config.textColorArgb,
-                        tagPrefix = "text_color",
-                        onSelect = { onConfigChange(config.copy(textColorArgb = it)) }
-                    )
-
-                    Text(
-                        text = "Accent Color (AM/PM & Alarm)",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    ColorSwatchRow(
-                        presets = WidgetColorPalette.accentPresets,
-                        selectedArgb = config.accentColorArgb,
-                        tagPrefix = "accent_color",
-                        onSelect = { onConfigChange(config.copy(accentColorArgb = it)) }
-                    )
-
-                    Text(
-                        text = "Widget Surface Backdrop",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        WidgetBackgroundStyle.entries.forEach { bg ->
-                            FilterChip(
-                                selected = config.backgroundStyle == bg,
-                                onClick = { onConfigChange(config.copy(backgroundStyle = bg)) },
-                                label = { Text(bg.label) },
-                                modifier = Modifier.testTag("bg_style_${bg.name}")
-                            )
-                        }
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ClockShadowStyle.entries.forEach { shadow ->
+                        FilterChip(
+                            selected = config.shadowStyle == shadow,
+                            onClick = { onConfigChange(config.copy(shadowStyle = shadow)) },
+                            label = { Text(shadow.label) },
+                            modifier = Modifier.testTag("shadow_style_${shadow.name}")
+                        )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
+
+                // Colors & Backdrop
+                SectionLabel("Colors & Surface")
+                ColorSwatchRow(
+                    presets = WidgetColorPalette.textPresets,
+                    selectedArgb = config.textColorArgb,
+                    tagPrefix = "text_color",
+                    onSelect = { onConfigChange(config.copy(textColorArgb = it)) }
+                )
+                ColorSwatchRow(
+                    presets = WidgetColorPalette.accentPresets,
+                    selectedArgb = config.accentColorArgb,
+                    tagPrefix = "accent_color",
+                    onSelect = { onConfigChange(config.copy(accentColorArgb = it)) }
+                )
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    WidgetBackgroundStyle.entries.forEach { bg ->
+                        FilterChip(
+                            selected = config.backgroundStyle == bg,
+                            onClick = { onConfigChange(config.copy(backgroundStyle = bg)) },
+                            label = { Text(bg.label) },
+                            modifier = Modifier.testTag("bg_style_${bg.name}")
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
             }
         }
     }
 }
 
 @Composable
-private fun ConfigSectionCard(
-    title: String,
-    icon: Painter,
-    content: @Composable () -> Unit
-) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        shape = RoundedCornerShape(20.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    painter = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-            content()
-        }
-    }
+private fun SectionLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.primary,
+        fontWeight = FontWeight.SemiBold
+    )
 }
 
 @Composable
-private fun ConfigSwitchRow(
+private fun SimpleSwitchRow(
     title: String,
-    subtitle: String,
     checked: Boolean,
     testTag: String,
     onCheckedChange: (Boolean) -> Unit
@@ -487,28 +319,17 @@ private fun ConfigSwitchRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(10.dp))
             .clickable { onCheckedChange(!checked) }
-            .padding(vertical = 4.dp),
+            .padding(vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(end = 12.dp)
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium
+        )
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
@@ -528,22 +349,18 @@ private fun ColorSwatchRow(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         presets.forEach { (name, argb) ->
             val selected = argb == selectedArgb
             Box(
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
                     .background(Color(argb))
                     .border(
-                        width = if (selected) 3.dp else 1.dp,
-                        color = if (selected) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.outline
-                        },
+                        width = if (selected) 2.5.dp else 1.dp,
+                        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                         shape = CircleShape
                     )
                     .clickable { onSelect(argb) }
@@ -557,7 +374,7 @@ private fun ColorSwatchRow(
                         imageVector = Icons.Filled.Check,
                         contentDescription = "Selected $name",
                         tint = iconTint,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }

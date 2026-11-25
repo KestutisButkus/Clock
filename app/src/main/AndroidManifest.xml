@@ -59,6 +59,7 @@
             android:noHistory="true"
             android:theme="@style/Theme.ChronoClock.Trampoline" />
 
+        <!-- 4x1 Standard -->
         <receiver
             android:name=".widget.ClockWidgetProvider"
             android:exported="true"
@@ -74,6 +75,60 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/appwidget_clock_info" />
+        </receiver>
+
+        <!-- 2x1 Compact -->
+        <receiver
+            android:name=".widget.ClockCompactWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_name_compact">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.app.action.NEXT_ALARM_CLOCK_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/appwidget_clock_compact" />
+        </receiver>
+
+        <!-- 5x1 Wide -->
+        <receiver
+            android:name=".widget.ClockWideWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_name_wide">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.app.action.NEXT_ALARM_CLOCK_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/appwidget_clock_wide" />
+        </receiver>
+
+        <!-- 4x2 Large -->
+        <receiver
+            android:name=".widget.ClockLargeWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_name_large">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.app.action.NEXT_ALARM_CLOCK_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/appwidget_clock_large" />
         </receiver>
     </application>
 

@@ -5,11 +5,9 @@ import android.content.ComponentName
 import android.content.Intent
 import android.os.Build
 import android.widget.Toast
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -28,15 +26,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -46,9 +42,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -57,7 +50,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.data.WidgetPreferencesRepository
-import com.example.model.ClockFontStyle
 import com.example.model.ClockWidgetConfig
 import com.example.model.GridPreset
 import com.example.model.TimeFormatMode
@@ -65,6 +57,9 @@ import com.example.ui.components.ClockWidgetPreview
 import com.example.ui.config.WidgetConfigActivity
 import com.example.widget.AlarmRepository
 import com.example.widget.ClockAppIntentHelper
+import com.example.widget.ClockCompactWidgetProvider
+import com.example.widget.ClockLargeWidgetProvider
+import com.example.widget.ClockWideWidgetProvider
 import com.example.widget.ClockWidgetProvider
 
 @Composable
@@ -76,18 +71,37 @@ fun MainScreen(
     val context = LocalContext.current
     val repository = remember(context) { WidgetPreferencesRepository(context) }
 
-    var sandboxGrid by remember { mutableStateOf(GridPreset.GRID_4X1) }
-    var sandboxConfig by remember { mutableStateOf(ClockWidgetConfig(appWidgetId = 0)) }
-    var simulateNoAlarm by remember { mutableStateOf(false) }
-
-    val realAlarm = remember(revision, sandboxConfig.timeFormatMode) {
-        AlarmRepository.getNextAlarm(context, sandboxConfig.timeFormatMode)
+    var previewGrid by remember { mutableStateOf(GridPreset.GRID_4X1) }
+    val realAlarm = remember(revision) {
+        AlarmRepository.getNextAlarm(context, TimeFormatMode.SYSTEM)
     }
 
-    val sandboxAlarmText = when {
-        simulateNoAlarm -> null
-        realAlarm != null -> realAlarm.formattedTime
-        else -> "07:30"
+    fun requestPin(providerClass: Class<out ClockWidgetProvider>) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val manager = AppWidgetManager.getInstance(context)
+            val provider = ComponentName(context, providerClass)
+            if (manager.isRequestPinAppWidgetSupported) {
+                manager.requestPinAppWidget(provider, null, null)
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.pin_widget_requested),
+                    Toast.LENGTH_SHORT
+                ).show()
+            } else {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.pin_widget_unsupported),
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        } else {
+            Toast.makeText(
+                context,
+                context.getString(R.string.pin_widget_unsupported),
+                Toast.LENGTH_LONG
+            ).show()
+        }
+        onRefreshWidgets()
     }
 
     Scaffold(
@@ -98,7 +112,7 @@ fun MainScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Column(
@@ -107,351 +121,169 @@ fun MainScreen(
                     .fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Hero Showcase Card
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(172.dp)
-                        .clip(RoundedCornerShape(24.dp))
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.img_widget_showcase),
-                        contentDescription = stringResource(id = R.string.cd_widget_showcase),
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color(0x33090E1A),
-                                        Color(0xE6090E1A)
-                                    )
-                                )
-                            )
-                            .padding(18.dp),
-                        contentAlignment = Alignment.BottomStart
-                    ) {
-                        Column {
-                            Text(
-                                text = stringResource(id = R.string.app_name),
-                                style = MaterialTheme.typography.headlineLarge,
-                                color = Color.White
-                            )
-                            Text(
-                                text = "Adaptive Home Screen Clock & Alarm Widget",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color(0xFFCBD5E1)
-                            )
-                        }
-                    }
-                }
-
-                // Primary Actions Row
+                // Clean Header (no background image)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Button(
-                        onClick = {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                val manager = AppWidgetManager.getInstance(context)
-                                val provider = ComponentName(context, ClockWidgetProvider::class.java)
-                                if (manager.isRequestPinAppWidgetSupported) {
-                                    manager.requestPinAppWidget(provider, null, null)
-                                    Toast.makeText(
-                                        context,
-                                        context.getString(R.string.pin_widget_requested),
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                } else {
-                                    Toast.makeText(
-                                        context,
-                                        context.getString(R.string.pin_widget_unsupported),
-                                        Toast.LENGTH_LONG
-                                    ).show()
-                                }
-                            } else {
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.pin_widget_unsupported),
-                                    Toast.LENGTH_LONG
-                                ).show()
-                            }
-                            onRefreshWidgets()
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(50.dp)
-                            .testTag("pin_widget_button"),
-                        shape = RoundedCornerShape(14.dp)
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_add_home),
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(id = R.string.app_name),
+                            style = MaterialTheme.typography.headlineLarge
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Add Widget")
+                        Text(
+                            text = "Home screen clock widget",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-
                     FilledTonalButton(
                         onClick = { ClockAppIntentHelper.launchSystemClockSafely(context) },
                         modifier = Modifier
-                            .weight(1f)
-                            .height(50.dp)
+                            .height(44.dp)
                             .testTag("open_system_clock_button"),
-                        shape = RoundedCornerShape(14.dp)
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_open_in_new),
                             contentDescription = null,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("System Clock")
+                        Text("Clock")
                     }
                 }
 
-                // Interactive Grid & Edge-Case Sandbox
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_grid_view),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Interactive Grid & Edge-Case Tester",
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                        }
+                // Clean Preview
+                ClockWidgetPreview(
+                    config = ClockWidgetConfig(appWidgetId = 0),
+                    gridPreset = previewGrid,
+                    nextAlarmText = realAlarm?.formattedTime ?: "07:30",
+                    onWidgetClick = { ClockAppIntentHelper.launchSystemClockSafely(context) },
+                    modifier = Modifier.testTag("sandbox_widget_preview")
+                )
 
-                        ClockWidgetPreview(
-                            config = sandboxConfig,
-                            gridPreset = sandboxGrid,
-                            nextAlarmText = sandboxAlarmText,
-                            onWidgetClick = { ClockAppIntentHelper.launchSystemClockSafely(context) },
-                            modifier = Modifier.testTag("sandbox_widget_preview")
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf(
+                        GridPreset.GRID_2X1,
+                        GridPreset.GRID_4X1,
+                        GridPreset.GRID_5X1,
+                        GridPreset.GRID_4X2,
+                        GridPreset.GRID_TABLET
+                    ).forEach { preset ->
+                        FilterChip(
+                            selected = previewGrid == preset,
+                            onClick = { previewGrid = preset },
+                            label = { Text(preset.label) },
+                            modifier = Modifier.testTag("sandbox_grid_${preset.name}")
                         )
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            GridPreset.entries.forEach { preset ->
-                                FilterChip(
-                                    selected = sandboxGrid == preset,
-                                    onClick = { sandboxGrid = preset },
-                                    label = { Text(preset.label) },
-                                    modifier = Modifier.testTag("sandbox_grid_${preset.name}")
-                                )
-                            }
-                        }
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            TimeFormatMode.entries.forEach { mode ->
-                                FilterChip(
-                                    selected = sandboxConfig.timeFormatMode == mode,
-                                    onClick = {
-                                        sandboxConfig = sandboxConfig.copy(timeFormatMode = mode)
-                                    },
-                                    label = { Text(mode.label) },
-                                    modifier = Modifier.testTag("sandbox_format_${mode.name}")
-                                )
-                            }
-                            ClockFontStyle.entries.forEach { style ->
-                                FilterChip(
-                                    selected = sandboxConfig.fontStyle == style,
-                                    onClick = {
-                                        sandboxConfig = sandboxConfig.copy(fontStyle = style)
-                                    },
-                                    label = { Text(style.label) },
-                                    modifier = Modifier.testTag("sandbox_font_${style.name}")
-                                )
-                            }
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Seconds (${if (sandboxConfig.showSeconds) "1s Live" else "Minute-only"})",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Switch(
-                                checked = sandboxConfig.showSeconds,
-                                onCheckedChange = {
-                                    sandboxConfig = sandboxConfig.copy(showSeconds = it)
-                                },
-                                modifier = Modifier.testTag("sandbox_seconds_switch")
-                            )
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Simulate No Active Alarm (Hide Field)",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Switch(
-                                checked = simulateNoAlarm,
-                                onCheckedChange = { simulateNoAlarm = it },
-                                modifier = Modifier.testTag("sandbox_no_alarm_switch")
-                            )
-                        }
                     }
                 }
 
-                // Active Home Screen Widgets List
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.fillMaxWidth()
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
+
+                // Quick Add Widget Presets
+                Text(
+                    text = "Add Widget to Home Screen",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
+                    Button(
+                        onClick = { requestPin(ClockCompactWidgetProvider::class.java) },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.testTag("pin_2x1_button")
+                    ) { Text("2×1") }
+
+                    Button(
+                        onClick = { requestPin(ClockWidgetProvider::class.java) },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.testTag("pin_4x1_button")
+                    ) { Text("4×1") }
+
+                    Button(
+                        onClick = { requestPin(ClockWideWidgetProvider::class.java) },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.testTag("pin_5x1_button")
+                    ) { Text("5×1") }
+
+                    Button(
+                        onClick = { requestPin(ClockLargeWidgetProvider::class.java) },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.testTag("pin_4x2_button")
+                    ) { Text("4×2") }
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
+
+                // Placed Widgets List
+                Text(
+                    text = "Placed Widgets (${activeWidgetIds.size})",
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                if (activeWidgetIds.isEmpty()) {
+                    Text(
+                        text = "Tap a size above or long-press your home screen to place a widget. Each widget keeps independent settings.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    activeWidgetIds.forEach { widgetId ->
+                        val itemConfig = remember(widgetId, revision) {
+                            repository.loadConfig(widgetId)
+                        }
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surface)
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_widgets),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Placed Home Screen Widgets",
-                                    style = MaterialTheme.typography.titleMedium
+                                    text = "Widget #$widgetId",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Medium
                                 )
-                            }
-                            Text(
-                                text = "${activeWidgetIds.size}",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-
-                        if (activeWidgetIds.isEmpty()) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
-                                    .padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.ic_alarm_clock),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.secondary,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = "No Chrono Clock widgets placed yet",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
                                 Text(
-                                    text = "Tap \"Add Widget\" above or long-press your home screen to place one. Each placed widget stores independent typography, seconds, date, and color settings by appWidgetId.",
+                                    text = "${itemConfig.fontStyle.label} • ${itemConfig.timeFormatMode.label} • ${if (itemConfig.showSeconds) "Seconds ON" else "Minute-only"}",
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                        } else {
-                            activeWidgetIds.forEach { widgetId ->
-                                val itemConfig = remember(widgetId, revision) {
-                                    repository.loadConfig(widgetId)
-                                }
-                                Column(
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(14.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
-                                        .padding(12.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Column {
-                                            Text(
-                                                text = "Widget #$widgetId",
-                                                style = MaterialTheme.typography.titleMedium
-                                            )
-                                            Text(
-                                                text = "${itemConfig.fontStyle.label} • ${itemConfig.timeFormatMode.label} • ${if (itemConfig.showSeconds) "Seconds ON" else "Minute-only"}",
-                                                style = MaterialTheme.typography.labelMedium,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                        OutlinedButton(
-                                            onClick = {
-                                                val intent = Intent(context, WidgetConfigActivity::class.java).apply {
-                                                    putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
-                                                }
-                                                context.startActivity(intent)
-                                            },
-                                            modifier = Modifier.testTag("edit_widget_$widgetId")
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Filled.Settings,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Text("Configure")
-                                        }
+                            OutlinedButton(
+                                onClick = {
+                                    val intent = Intent(context, WidgetConfigActivity::class.java).apply {
+                                        putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
                                     }
-                                    ClockWidgetPreview(
-                                        config = itemConfig,
-                                        gridPreset = GridPreset.GRID_4X1,
-                                        nextAlarmText = if (itemConfig.showNextAlarm) {
-                                            realAlarm?.formattedTime ?: "07:30"
-                                        } else {
-                                            null
-                                        }
-                                    )
-                                }
+                                    context.startActivity(intent)
+                                },
+                                modifier = Modifier.testTag("edit_widget_$widgetId")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Settings,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Edit")
                             }
                         }
                     }
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }

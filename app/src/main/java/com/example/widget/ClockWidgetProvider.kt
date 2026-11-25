@@ -9,7 +9,7 @@ import android.content.Intent
 import android.os.Bundle
 import com.example.data.WidgetPreferencesRepository
 
-class ClockWidgetProvider : AppWidgetProvider() {
+open class ClockWidgetProvider : AppWidgetProvider() {
 
     override fun onUpdate(
         context: Context,
@@ -51,6 +51,13 @@ class ClockWidgetProvider : AppWidgetProvider() {
     }
 
     companion object {
+        val allProviders: List<Class<out ClockWidgetProvider>> = listOf(
+            ClockCompactWidgetProvider::class.java,
+            ClockWidgetProvider::class.java,
+            ClockWideWidgetProvider::class.java,
+            ClockLargeWidgetProvider::class.java
+        )
+
         fun updateWidget(
             context: Context,
             appWidgetManager: AppWidgetManager = AppWidgetManager.getInstance(context),
@@ -71,17 +78,23 @@ class ClockWidgetProvider : AppWidgetProvider() {
 
         fun updateAllWidgets(context: Context) {
             val appWidgetManager = AppWidgetManager.getInstance(context)
-            val componentName = ComponentName(context, ClockWidgetProvider::class.java)
-            val widgetIds = appWidgetManager.getAppWidgetIds(componentName)
-            for (appWidgetId in widgetIds) {
+            getActiveWidgetIds(context).forEach { appWidgetId ->
                 updateWidget(context, appWidgetManager, appWidgetId)
             }
         }
 
         fun getActiveWidgetIds(context: Context): IntArray {
             val appWidgetManager = AppWidgetManager.getInstance(context)
-            val componentName = ComponentName(context, ClockWidgetProvider::class.java)
-            return appWidgetManager.getAppWidgetIds(componentName)
+            return allProviders
+                .flatMap { cls ->
+                    appWidgetManager.getAppWidgetIds(ComponentName(context, cls)).toList()
+                }
+                .distinct()
+                .toIntArray()
         }
     }
 }
+
+class ClockCompactWidgetProvider : ClockWidgetProvider()
+class ClockWideWidgetProvider : ClockWidgetProvider()
+class ClockLargeWidgetProvider : ClockWidgetProvider()

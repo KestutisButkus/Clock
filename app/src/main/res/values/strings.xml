@@ -1,13 +1,18 @@
 <resources>
     <string name="app_name">Chrono Clock</string>
-    <string name="widget_name">Chrono Digital Clock</string>
-    <string name="widget_description">Adaptive digital clock with seconds, date, next alarm, custom fonts, and contrast shadows.</string>
+    <string name="widget_name">Chrono Clock 4×1</string>
+    <string name="widget_name_compact">Chrono Clock 2×1</string>
+    <string name="widget_name_wide">Chrono Clock 5×1</string>
+    <string name="widget_name_large">Chrono Clock 4×2</string>
+    <string name="widget_description">Adaptive 4×1 digital clock with date, alarm, and custom fonts.</string>
+    <string name="widget_desc_compact">Compact 2×1 digital clock with optional date and alarm.</string>
+    <string name="widget_desc_wide">Wide 5×1 digital clock with seconds, date, and alarm.</string>
+    <string name="widget_desc_large">Large 4×2 digital clock for phones and tablets.</string>
     <string name="widget_config_title">Configure Clock Widget</string>
     <string name="widget_preview_time">10:09</string>
     <string name="widget_preview_date">Tue, Nov 24</string>
     <string name="widget_preview_alarm">07:30</string>
     <string name="cd_alarm_icon">Next alarm</string>
-    <string name="cd_widget_showcase">Chrono Clock widget showcase banner</string>
     <string name="cd_open_clock">Tap to open system Clock app</string>
     <string name="clock_app_unavailable">System Clock app not found. Opening Chrono Clock instead.</string>
     <string name="pin_widget_unsupported">Your launcher does not support pinning directly. Long-press your home screen to add Chrono Clock.</string>

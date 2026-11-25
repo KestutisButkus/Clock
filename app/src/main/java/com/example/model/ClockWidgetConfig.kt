@@ -49,13 +49,15 @@ enum class GridPreset(
     GRID_4X1("4×1", 280, 62),
     GRID_5X1("5×1", 350, 64),
     GRID_4X2("4×2", 280, 128),
-    GRID_5X2("5×2", 350, 138)
+    GRID_5X2("5×2", 350, 138),
+    GRID_TABLET("Tablet", 580, 185)
 }
 
 enum class WidgetSizeBucket {
     COMPACT,
     WIDE,
-    LARGE
+    LARGE,
+    TABLET
 }
 
 data class ClockWidgetConfig(

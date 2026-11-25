@@ -20,7 +20,6 @@ import com.example.model.ClockFontWeight
 import com.example.model.ClockShadowStyle
 import com.example.model.ClockWidgetConfig
 import com.example.model.DatePlacement
-import com.example.model.GridPreset
 import com.example.model.TimeFormatMode
 import com.example.model.WidgetBackgroundStyle
 import com.example.model.WidgetSizeBucket
@@ -28,6 +27,20 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 object ClockRemoteViewsBuilder {
+
+    private val fallbackSizes: List<SizeF> = listOf(
+        SizeF(130f, 56f),
+        SizeF(205f, 56f),
+        SizeF(280f, 62f),
+        SizeF(350f, 64f),
+        SizeF(460f, 88f),
+        SizeF(280f, 128f),
+        SizeF(350f, 138f),
+        SizeF(480f, 140f),
+        SizeF(580f, 185f),
+        SizeF(720f, 220f),
+        SizeF(880f, 260f)
+    )
 
     fun build(
         context: Context,
@@ -41,18 +54,33 @@ object ClockRemoteViewsBuilder {
             null
         }
         val clickPendingIntent = createClockLaunchPendingIntent(context, appWidgetId)
+        val isSystem24Hour = DateFormat.is24HourFormat(context)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val sizeMap = GridPreset.entries.associate { preset ->
-                SizeF(preset.widthDp.toFloat(), preset.heightDp.toFloat()) to
-                    buildForDimensions(
-                        context = context,
-                        widthDp = preset.widthDp,
-                        heightDp = preset.heightDp,
-                        config = config,
-                        nextAlarm = nextAlarm,
-                        clickPendingIntent = clickPendingIntent
-                    )
+            val hostSizes = extractHostSizes(options)
+            val targetSizes = if (hostSizes.isNotEmpty()) {
+                hostSizes.distinctBy { "${it.width.roundToInt()}x${it.height.roundToInt()}" }
+            } else {
+                val minW = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0) ?: 0
+                val minH = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0) ?: 0
+                buildList {
+                    addAll(fallbackSizes)
+                    if (minW > 0 && minH > 0) {
+                        add(SizeF(minW.toFloat(), minH.toFloat()))
+                    }
+                }.distinctBy { "${it.width.roundToInt()}x${it.height.roundToInt()}" }.take(15)
+            }
+
+            val sizeMap = targetSizes.associateWith { size ->
+                buildForDimensions(
+                    context = context,
+                    widthDp = size.width.roundToInt(),
+                    heightDp = size.height.roundToInt(),
+                    config = config,
+                    nextAlarm = nextAlarm,
+                    clickPendingIntent = clickPendingIntent,
+                    isSystem24Hour = isSystem24Hour
+                )
             }
             return RemoteViews(sizeMap)
         }
@@ -68,8 +96,20 @@ object ClockRemoteViewsBuilder {
             heightDp = heightDp,
             config = config,
             nextAlarm = nextAlarm,
-            clickPendingIntent = clickPendingIntent
+            clickPendingIntent = clickPendingIntent,
+            isSystem24Hour = isSystem24Hour
         )
+    }
+
+    @Suppress("DEPRECATION")
+    private fun extractHostSizes(options: Bundle?): List<SizeF> {
+        if (options == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return emptyList()
+        val list = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            options.getParcelableArrayList(AppWidgetManager.OPTION_APPWIDGET_SIZES, SizeF::class.java)
+        } else {
+            options.getParcelableArrayList(AppWidgetManager.OPTION_APPWIDGET_SIZES)
+        }
+        return list?.filter { it.width > 0f && it.height > 0f } ?: emptyList()
     }
 
     fun buildForDimensions(
@@ -78,13 +118,15 @@ object ClockRemoteViewsBuilder {
         heightDp: Int,
         config: ClockWidgetConfig,
         nextAlarm: NextAlarmInfo?,
-        clickPendingIntent: PendingIntent
+        clickPendingIntent: PendingIntent,
+        isSystem24Hour: Boolean = DateFormat.is24HourFormat(context)
     ): RemoteViews {
-        val spec = WidgetSizeCalculator.calculate(widthDp, heightDp, config)
+        val spec = WidgetSizeCalculator.calculate(widthDp, heightDp, config, isSystem24Hour)
         val layoutRes = when (spec.bucket) {
             WidgetSizeBucket.COMPACT -> R.layout.widget_clock_compact
             WidgetSizeBucket.WIDE -> R.layout.widget_clock_wide
             WidgetSizeBucket.LARGE -> R.layout.widget_clock_large
+            WidgetSizeBucket.TABLET -> R.layout.widget_clock_tablet
         }
 
         val views = RemoteViews(context.packageName, layoutRes)
@@ -102,10 +144,8 @@ object ClockRemoteViewsBuilder {
         views.setViewPadding(R.id.widget_root, hPadPx, vPadPx, hPadPx, vPadPx)
         views.setOnClickPendingIntent(R.id.widget_root, clickPendingIntent)
 
-        // Compose native TextClock layers for font style + weight + shadow/outline
         populateTimeLayers(context, views, spec, config)
 
-        // Configure AM/PM TextClock
         when (config.timeFormatMode) {
             TimeFormatMode.SYSTEM -> {
                 views.setViewVisibility(R.id.tc_ampm, View.VISIBLE)
@@ -124,14 +164,13 @@ object ClockRemoteViewsBuilder {
         views.setTextViewTextSize(R.id.tc_ampm, TypedValue.COMPLEX_UNIT_SP, spec.ampmTextSizeSp)
         views.setTextColor(R.id.tc_ampm, config.accentColorArgb)
 
-        // Date formatting & metadata placement
         val dateSkeleton = if (spec.useExtendedDateFormat) "EEEEMMMd" else "EEEMMMd"
         val localizedDatePattern = DateFormat.getBestDateTimePattern(Locale.getDefault(), dateSkeleton)
         val dateColor = ColorUtils.setAlphaComponent(config.textColorArgb, 224)
         val showAnyMeta = config.showDate || nextAlarm != null
 
         when (spec.bucket) {
-            WidgetSizeBucket.COMPACT, WidgetSizeBucket.LARGE -> {
+            WidgetSizeBucket.COMPACT, WidgetSizeBucket.LARGE, WidgetSizeBucket.TABLET -> {
                 views.setViewVisibility(
                     R.id.meta_below_row,
                     if (showAnyMeta) View.VISIBLE else View.GONE

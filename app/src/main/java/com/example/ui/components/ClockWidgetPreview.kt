@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -29,17 +31,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
 import com.example.model.ClockFontStyle
 import com.example.model.ClockFontWeight
 import com.example.model.ClockShadowStyle
@@ -70,7 +74,6 @@ fun ClockWidgetPreview(
     val context = LocalContext.current
     var currentMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
-    // Mirror battery-saving behavior in preview: tick every 1s only when seconds are enabled
     LaunchedEffect(config.showSeconds) {
         while (true) {
             currentMillis = System.currentTimeMillis()
@@ -83,97 +86,102 @@ fun ClockWidgetPreview(
         }
     }
 
-    val spec = remember(gridPreset, config) {
-        WidgetSizeCalculator.calculate(gridPreset.widthDp, gridPreset.heightDp, config)
-    }
+    val isSystem24Hour = remember(context) { DateFormat.is24HourFormat(context) }
 
-    val use24Hour = when (config.timeFormatMode) {
-        TimeFormatMode.SYSTEM -> DateFormat.is24HourFormat(context)
-        TimeFormatMode.HOUR_12 -> false
-        TimeFormatMode.HOUR_24 -> true
-    }
-
-    val timePattern = when {
-        use24Hour && config.showSeconds -> "HH:mm:ss"
-        use24Hour -> "HH:mm"
-        config.showSeconds -> "h:mm:ss"
-        else -> "h:mm"
-    }
-
-    val locale = Locale.getDefault()
-    val now = Date(currentMillis)
-    val timeText = SimpleDateFormat(timePattern, locale).format(now)
-    val ampmText = if (!use24Hour) SimpleDateFormat("a", locale).format(now) else ""
-    val datePattern = DateFormat.getBestDateTimePattern(
-        locale,
-        if (spec.useExtendedDateFormat) "EEEEMMMd" else "EEEMMMd"
-    )
-    val dateText = SimpleDateFormat(datePattern, locale).format(now)
-
-    val textColor = Color(config.textColorArgb)
-    val accentColor = Color(config.accentColorArgb)
-    val fontFamily = when (config.fontStyle) {
-        ClockFontStyle.SANS_SERIF -> InterFontFamily
-        ClockFontStyle.CONDENSED -> RobotoCondensedFontFamily
-        ClockFontStyle.MONOSPACE -> JetBrainsMonoFontFamily
-        ClockFontStyle.DISPLAY -> OutfitFontFamily
-    }
-    val fontWeight = when (config.fontWeight) {
-        ClockFontWeight.LIGHT -> FontWeight.Light
-        ClockFontWeight.REGULAR -> FontWeight.Normal
-        ClockFontWeight.BOLD -> FontWeight.Bold
-    }
-
-    val effectColor = if (textColor.luminance() < 0.25f) Color.White else Color.Black
-    val textShadow = when (config.shadowStyle) {
-        ClockShadowStyle.NONE -> null
-        ClockShadowStyle.SUBTLE -> Shadow(
-            color = effectColor.copy(alpha = 0.55f),
-            offset = Offset(2f, 4f),
-            blurRadius = 6f
-        )
-        ClockShadowStyle.STRONG -> Shadow(
-            color = effectColor.copy(alpha = 0.85f),
-            offset = Offset(4f, 6f),
-            blurRadius = 10f
-        )
-        ClockShadowStyle.OUTLINE -> null
-    }
-
-    val wallpaperGradient = Brush.linearGradient(
-        colors = listOf(Color(0xFF0F172A), Color(0xFF1E3A5F), Color(0xFF312E81))
-    )
-
-    val widgetBgModifier = when (config.backgroundStyle) {
-        WidgetBackgroundStyle.TRANSPARENT -> Modifier
-        WidgetBackgroundStyle.FROSTED_DARK -> Modifier
-            .background(Color(0x660F172A), RoundedCornerShape(22.dp))
-            .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(22.dp))
-        WidgetBackgroundStyle.FROSTED_LIGHT -> Modifier
-            .background(Color(0x80F8FAFC), RoundedCornerShape(22.dp))
-            .border(1.dp, Color(0x4D0F172A), RoundedCornerShape(22.dp))
-        WidgetBackgroundStyle.SOLID_DARK -> Modifier
-            .background(Color(0xE60B1120), RoundedCornerShape(22.dp))
-            .border(1.dp, Color(0x3338BDF8), RoundedCornerShape(22.dp))
-    }
-
-    val displayedAlarm = if (config.showNextAlarm) nextAlarmText else null
-    val showAnyMeta = config.showDate || displayedAlarm != null
-
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(wallpaperGradient)
-            .padding(16.dp),
+            .clip(RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f), RoundedCornerShape(18.dp))
+            .padding(12.dp),
         contentAlignment = Alignment.Center
     ) {
+        val availableWidthDp = maxWidth.value.toInt().coerceAtLeast(120)
+        val effectiveWidthDp = minOf(gridPreset.widthDp, availableWidthDp)
+        val scaleRatio = effectiveWidthDp.toFloat() / gridPreset.widthDp.toFloat()
+        val effectiveHeightDp = (gridPreset.heightDp * scaleRatio).toInt().coerceAtLeast(48)
+
+        val spec = remember(effectiveWidthDp, effectiveHeightDp, config, isSystem24Hour) {
+            WidgetSizeCalculator.calculate(effectiveWidthDp, effectiveHeightDp, config, isSystem24Hour)
+        }
+
+        val use24Hour = when (config.timeFormatMode) {
+            TimeFormatMode.SYSTEM -> isSystem24Hour
+            TimeFormatMode.HOUR_12 -> false
+            TimeFormatMode.HOUR_24 -> true
+        }
+
+        val timePattern = when {
+            use24Hour && config.showSeconds -> "HH:mm:ss"
+            use24Hour -> "HH:mm"
+            config.showSeconds -> "h:mm:ss"
+            else -> "h:mm"
+        }
+
+        val locale = Locale.getDefault()
+        val now = Date(currentMillis)
+        val timeText = SimpleDateFormat(timePattern, locale).format(now)
+        val ampmText = if (!use24Hour) SimpleDateFormat("a", locale).format(now) else ""
+        val datePattern = DateFormat.getBestDateTimePattern(
+            locale,
+            if (spec.useExtendedDateFormat) "EEEEMMMd" else "EEEMMMd"
+        )
+        val dateText = SimpleDateFormat(datePattern, locale).format(now)
+
+        val textColor = Color(config.textColorArgb)
+        val accentColor = Color(config.accentColorArgb)
+        val fontFamily = when (config.fontStyle) {
+            ClockFontStyle.SANS_SERIF -> InterFontFamily
+            ClockFontStyle.CONDENSED -> RobotoCondensedFontFamily
+            ClockFontStyle.MONOSPACE -> JetBrainsMonoFontFamily
+            ClockFontStyle.DISPLAY -> OutfitFontFamily
+        }
+        val fontWeight = when (config.fontWeight) {
+            ClockFontWeight.LIGHT -> FontWeight.Light
+            ClockFontWeight.REGULAR -> FontWeight.Normal
+            ClockFontWeight.BOLD -> FontWeight.Bold
+        }
+
+        val effectColor = if (textColor.luminance() < 0.25f) Color.White else Color.Black
+        val textShadow = when (config.shadowStyle) {
+            ClockShadowStyle.NONE -> null
+            ClockShadowStyle.SUBTLE -> Shadow(
+                color = effectColor.copy(alpha = 0.55f),
+                offset = Offset(2f, 4f),
+                blurRadius = 6f
+            )
+            ClockShadowStyle.STRONG -> Shadow(
+                color = effectColor.copy(alpha = 0.85f),
+                offset = Offset(4f, 6f),
+                blurRadius = 10f
+            )
+            ClockShadowStyle.OUTLINE -> null
+        }
+
+        val widgetBgModifier = when (config.backgroundStyle) {
+            WidgetBackgroundStyle.TRANSPARENT -> Modifier
+                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f), RoundedCornerShape(18.dp))
+            WidgetBackgroundStyle.FROSTED_DARK -> Modifier
+                .background(Color(0x660F172A), RoundedCornerShape(18.dp))
+                .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(18.dp))
+            WidgetBackgroundStyle.FROSTED_LIGHT -> Modifier
+                .background(Color(0x80F8FAFC), RoundedCornerShape(18.dp))
+                .border(1.dp, Color(0x4D0F172A), RoundedCornerShape(18.dp))
+            WidgetBackgroundStyle.SOLID_DARK -> Modifier
+                .background(Color(0xE60B1120), RoundedCornerShape(18.dp))
+                .border(1.dp, Color(0x3338BDF8), RoundedCornerShape(18.dp))
+        }
+
+        val displayedAlarm = if (config.showNextAlarm) nextAlarmText else null
+        val showAnyMeta = config.showDate || displayedAlarm != null
+
         Box(
             modifier = Modifier
-                .widthIn(max = gridPreset.widthDp.dp)
+                .widthIn(max = effectiveWidthDp.dp)
                 .fillMaxWidth()
-                .height(gridPreset.heightDp.dp)
-                .clip(RoundedCornerShape(22.dp))
+                .height(effectiveHeightDp.dp)
+                .clip(RoundedCornerShape(18.dp))
                 .then(widgetBgModifier)
                 .let { mod ->
                     if (onWidgetClick != null) mod.clickable(onClick = onWidgetClick) else mod
@@ -205,7 +213,7 @@ fun ClockWidgetPreview(
                         outline = config.shadowStyle == ClockShadowStyle.OUTLINE,
                         outlineColor = effectColor
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
                     Column(
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.Start
@@ -221,7 +229,7 @@ fun ClockWidgetPreview(
                             )
                         }
                         if (displayedAlarm != null) {
-                            if (config.showDate) Spacer(modifier = Modifier.height(3.dp))
+                            if (config.showDate) Spacer(modifier = Modifier.height(2.dp))
                             PreviewAlarmBadge(
                                 alarmText = displayedAlarm,
                                 textSizeSp = spec.alarmTextSizeSp,
@@ -250,7 +258,7 @@ fun ClockWidgetPreview(
                         outlineColor = effectColor
                     )
                     if (showAnyMeta) {
-                        Spacer(modifier = Modifier.height(if (spec.bucket == WidgetSizeBucket.LARGE) 6.dp else 2.dp))
+                        Spacer(modifier = Modifier.height(2.dp))
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center
@@ -306,10 +314,10 @@ private fun PreviewTimeBlock(
                 fontSize = textSizeSp.sp,
                 lineHeight = (textSizeSp * 0.9f).sp,
                 fontFeatureSettings = "tnum",
-                platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
-                lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
-                    alignment = androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,
-                    trim = androidx.compose.ui.text.style.LineHeightStyle.Trim.Both
+                platformStyle = PlatformTextStyle(includeFontPadding = false),
+                lineHeightStyle = LineHeightStyle(
+                    alignment = LineHeightStyle.Alignment.Center,
+                    trim = LineHeightStyle.Trim.Both
                 )
             )
             if (outline) {
@@ -360,7 +368,7 @@ private fun PreviewAlarmBadge(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            painter = painterResource(id = com.example.R.drawable.ic_alarm_clock),
+            painter = painterResource(id = R.drawable.ic_alarm_clock),
             contentDescription = null,
             tint = accentColor,
             modifier = Modifier.size(iconSizeDp.dp)

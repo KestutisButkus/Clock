@@ -91,4 +91,12 @@ class WidgetSizeCalculatorTest {
             )
         }
     }
+
+    @Test
+    fun `tablet dimensions use TABLET bucket and scale digits above 120sp`() {
+        val config = ClockWidgetConfig(appWidgetId = 5, showSeconds = false)
+        val spec = WidgetSizeCalculator.calculate(580, 185, config, isSystem24Hour = true)
+        assertEquals(WidgetSizeBucket.TABLET, spec.bucket)
+        assertTrue("Expected large tablet digits, got ${spec.timeTextSizeSp}", spec.timeTextSizeSp >= 120f)
+    }
 }
